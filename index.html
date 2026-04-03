@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HOURS — project time tracker</title>
+  <style>
+    /* ── Reset & Variables ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0c0c0e;
+      --surface:   #141418;
+      --surface2:  #1c1c22;
+      --border:    #2a2a34;
+      --border2:   #3a3a48;
+      --text:      #dedad2;
+      --text-muted:#6a6a78;
+      --accent:    #e8a23a;
+      --accent-dim:#7a4e10;
+      --green:     #4ade80;
+      --danger:    #f87171;
+      --font:      ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Monaco, 'Courier New', monospace;
+      --radius:    4px;
+      --transition: 120ms ease;
+    }
+
+    html { font-size: 14px; }
+
+    /* Scale up the base font at wider viewports so everything breathes */
+    @media (min-width: 768px)  { html { font-size: 15px; } }
+    @media (min-width: 1024px) { html { font-size: 16px; } }
+    @media (min-width: 1440px) { html { font-size: 17px; } }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 2rem 5rem;
+      line-height: 1.5;
+    }
+
+    /* ── Scanline texture ────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.06) 2px,
+        rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Background canvas ────────────────────────────────────────────── */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 700ms ease;
+    }
+    #bg-canvas.visible { opacity: 1; }
+
+    /* ── Hyperspace flash ────────────────────────────────────────────── */
+    #hyperspace-flash {
+      position: fixed;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 2;
+      transition: opacity 100ms ease;
+    }
+
+    /* ── Layout container ────────────────────────────────────────────── */
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 720px;
+      padding-top: 3rem;
+    }
+
+    @media (min-width: 768px)  { .container { max-width: 760px;  padding-top: 4rem; } }
+    @media (min-width: 1024px) { .container { max-width: 860px;  padding-top: 5rem; } }
+    @media (min-width: 1440px) { .container { max-width: 980px;  padding-top: 6rem; } }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (min-width: 768px)  { header { padding-bottom: 1.5rem; margin-bottom: 2.5rem; } }
+    @media (min-width: 1024px) { header { padding-bottom: 1.75rem; margin-bottom: 3rem; } }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    @media (min-width: 768px)  { h1 { font-size: 1.75rem; } }
+    @media (min-width: 1024px) { h1 { font-size: 2rem;    letter-spacing: 0.22em; } }
+
+    .header-tag {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      border: 1px solid var(--border2);
+      padding: 1px 6px;
+      border-radius: var(--radius);
+    }
+
+    .header-sub {
+      margin-top: 0.4rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+    .header-sub span { color: var(--accent); opacity: 0.7; }
+
+    /* ── Background picker ───────────────────────────────────────────── */
+    .bg-picker {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .bg-picker-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-right: 0.1rem;
+    }
+
+    .bg-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--font);
+      font-size: 0.68rem;
+      letter-spacing: 0.04em;
+      padding: 2px 7px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .bg-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+
+    .bg-btn.active                   { border-color: var(--accent);  color: var(--accent);  background: rgba(232,162,58,0.08); }
+    .bg-btn.active[data-bg="stars"]  { border-color: #7ab4ff;        color: #7ab4ff;        background: rgba(122,180,255,0.07); }
+    .bg-btn.active[data-bg="matrix"] { border-color: #00e840;        color: #00e840;        background: rgba(0,232,64,0.06); }
+
+    /* ── Add-project form ────────────────────────────────────────────── */
+    .add-form {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (min-width: 768px)  { .add-form { gap: 0.65rem; margin-bottom: 2.5rem; } }
+    @media (min-width: 1024px) { .add-form { gap: 0.75rem; margin-bottom: 3rem;   } }
+
+    .add-form input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.875rem;
+      padding: 0.6rem 0.8rem;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .add-form input::placeholder { color: var(--text-muted); }
+    .add-form input:focus { border-color: var(--accent); }
+
+    /* ── Buttons ─────────────────────────────────────────────────────── */
+    .btn {
+      cursor: pointer;
+      font-family: var(--font);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      padding: 0.6rem 1rem;
+      transition: background var(--transition), color var(--transition), border-color var(--transition);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .btn-primary { background: var(--accent); color: #0c0c0e; border-color: var(--accent); }
+    .btn-primary:hover  { background: #f0b050; border-color: #f0b050; }
+    .btn-primary:active { background: #d08820; }
+
+    .btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--border); }
+    .btn-ghost:hover  { color: var(--text); border-color: var(--border2); background: var(--surface2); }
+    .btn-ghost:active { background: var(--surface); }
+
+    .btn-danger {
+      background: transparent; color: var(--danger); border-color: transparent;
+      padding: 0.4rem 0.5rem; font-size: 0.75rem; opacity: 0.4;
+    }
+    .btn-danger:hover { opacity: 1; border-color: var(--danger); }
+
+    /* ── Sort controls ────────────────────────────────────────────────── */
+    .sort-bar {
+      display: flex; align-items: center; gap: 0.4rem;
+      margin-bottom: 1rem; font-size: 0.72rem;
+    }
+    .sort-label {
+      color: var(--text-muted); letter-spacing: 0.08em;
+      text-transform: uppercase; margin-right: 0.1rem;
+    }
+    .sort-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); font-family: var(--font);
+      font-size: 0.72rem; letter-spacing: 0.04em;
+      padding: 2px 8px; border-radius: var(--radius);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .sort-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+    .sort-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,162,58,0.08); }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 3rem 1rem;
+      color: var(--text-muted); font-size: 0.8rem; letter-spacing: 0.04em;
+      border: 1px dashed var(--border); border-radius: var(--radius);
+    }
+    .empty-state .empty-icon { font-size: 2rem; display: block; margin-bottom: 0.75rem; opacity: 0.5; }
+    .empty-state strong { display: block; color: var(--text); margin-bottom: 0.3rem; font-size: 0.875rem; }
+
+    /* ── Project list & card ──────────────────────────────────────────── */
+    #project-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    @media (min-width: 768px)  { #project-list { gap: 0.65rem; } }
+    @media (min-width: 1024px) { #project-list { gap: 0.75rem; } }
+
+    .project-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      transition: border-color var(--transition);
+      animation: slide-in 180ms ease both;
+    }
+    .project-card:hover { border-color: var(--border2); }
+
+    @media (min-width: 768px)  { .project-card { padding: 1rem 1.25rem; } }
+    @media (min-width: 1024px) { .project-card { padding: 1.1rem 1.5rem; border-radius: 6px; } }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .project-card.bump .hours-display { animation: bump 300ms ease; }
+    @keyframes bump {
+      0%  { transform: scale(1); }
+      40% { transform: scale(1.18); color: var(--green); }
+      100%{ transform: scale(1); }
+    }
+
+    .card-top {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;
+    }
+
+    .project-name {
+      flex: 1; font-size: 0.875rem; font-weight: 600; letter-spacing: 0.03em;
+      color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .project-name-input {
+      flex: 1; background: var(--surface2); border: 1px solid var(--accent);
+      border-radius: var(--radius); color: var(--text); font-family: var(--font);
+      font-size: 0.875rem; font-weight: 600; padding: 0.15rem 0.4rem; outline: none;
+    }
+
+    .hours-display {
+      font-size: 1.1rem; font-weight: 700; color: var(--accent);
+      letter-spacing: 0.05em; min-width: 4.5rem; text-align: right; display: inline-block;
+    }
+
+    @media (min-width: 768px)  { .hours-display { font-size: 1.25rem; min-width: 5rem; } }
+    @media (min-width: 1024px) { .hours-display { font-size: 1.4rem;  min-width: 5.5rem; } }
+    .hours-unit { font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.06em; }
+
+    .card-actions { display: flex; gap: 0.4rem; align-items: center; }
+    .card-actions .spacer { flex: 1; }
+
+    .btn-hour {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      font-family: var(--font); font-size: 0.78rem; font-weight: 700;
+      padding: 0.35rem 0.65rem; border-radius: var(--radius); cursor: pointer;
+      transition: background var(--transition), border-color var(--transition), color var(--transition);
+      letter-spacing: 0.04em;
+    }
+    .btn-hour:hover  { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .btn-hour:active { background: var(--accent); color: #0c0c0e; }
+
+    @media (min-width: 768px)  { .btn-hour { font-size: 0.85rem; padding: 0.45rem 0.85rem; } }
+    @media (min-width: 1024px) { .btn-hour { font-size: 0.9rem;  padding: 0.5rem  1rem;   } }
+
+    .btn-edit {
+      background: transparent; border: 1px solid transparent; color: var(--text-muted);
+      font-family: var(--font); font-size: 0.75rem; padding: 0.35rem 0.5rem;
+      border-radius: var(--radius); cursor: pointer; transition: all var(--transition); opacity: 0.45;
+    }
+    .btn-edit:hover { opacity: 1; border-color: var(--border2); background: var(--surface2); }
+
+    .undo-hint {
+      font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;
+      opacity: 0; transition: opacity 200ms ease; letter-spacing: 0.03em; height: 1rem;
+    }
+    .undo-hint.visible { opacity: 1; }
+
+    .undo-link {
+      color: var(--accent); cursor: pointer;
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+
+    /* ── Toast ───────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--surface2); border: 1px solid var(--border2); color: var(--text);
+      font-family: var(--font); font-size: 0.78rem; letter-spacing: 0.04em;
+      padding: 0.5rem 1rem; border-radius: var(--radius);
+      opacity: 0; pointer-events: none;
+      transition: opacity 200ms ease, transform 200ms ease;
+      z-index: 10000; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Footer ──────────────────────────────────────────────────────── */
+    .footer-bar {
+      margin-top: 2.5rem; padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .footer-stat { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.05em; }
+    .footer-stat strong { color: var(--accent); opacity: 0.85; }
+    .footer-actions { display: flex; gap: 0.4rem; }
+
+    /* ── Confirm overlay ─────────────────────────────────────────────── */
+    #overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    #overlay.open { display: flex; }
+
+    .confirm-box {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--radius); padding: 1.5rem;
+      max-width: 320px; width: 90%; font-size: 0.85rem;
+    }
+    .confirm-box p { margin-bottom: 1rem; line-height: 1.6; }
+    .confirm-box strong { color: var(--danger); }
+    .confirm-box .confirm-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 420px) {
+      h1 { font-size: 1.2rem; }
+      .hours-display { font-size: 1rem; min-width: 3.5rem; }
+      .btn-hour { padding: 0.35rem 0.5rem; font-size: 0.75rem; }
+      .bg-picker-label { display: none; }
+      body { padding: 0 0.75rem 4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Backgrounds render behind everything -->
+<canvas id="bg-canvas"></canvas>
+<div id="hyperspace-flash"></div>
+
+<div class="container">
+
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <header>
+    <div class="header-top">
+      <h1>HOURS</h1>
+      <span class="header-tag">v1</span>
+
+      <div class="bg-picker" id="bg-picker">
+        <span class="bg-picker-label">bg</span>
+        <button class="bg-btn active" data-bg="none"   title="Plain dark">off</button>
+        <button class="bg-btn"        data-bg="stars"  title="Star Wars starfield">✦ stars</button>
+        <button class="bg-btn"        data-bg="matrix" title="Matrix digital rain">⬛ matrix</button>
+      </div>
+    </div>
+    <p class="header-sub">your time matters. log it. <span>◆</span> or it never happened.</p>
+  </header>
+
+  <!-- ── Add project form ────────────────────────────────────────────── -->
+  <div class="add-form">
+    <input id="project-input" type="text" maxlength="64"
+           placeholder="new project name..." autocomplete="off" spellcheck="false" />
+    <button class="btn btn-primary" id="add-btn">+ add</button>
+  </div>
+
+  <!-- ── Sort controls ───────────────────────────────────────────────── -->
+  <div class="sort-bar" id="sort-bar" style="display:none">
+    <span class="sort-label">sort</span>
+    <button class="sort-btn active" data-sort="none">default</button>
+    <button class="sort-btn" data-sort="hours">hours ↓</button>
+    <button class="sort-btn" data-sort="alpha">A → Z</button>
+  </div>
+
+  <!-- ── Project list ────────────────────────────────────────────────── -->
+  <div id="project-list"></div>
+
+  <!-- ── Footer ─────────────────────────────────────────────────────── -->
+  <div class="footer-bar" id="footer-bar" style="display:none">
+    <span class="footer-stat" id="footer-stat"></span>
+    <div class="footer-actions">
+      <button class="btn btn-ghost" id="export-btn">↓ export</button>
+      <button class="btn btn-ghost" id="import-btn">↑ import</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" />
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Delete confirmation overlay ─────────────────────────────────────── -->
+<div id="overlay">
+  <div class="confirm-box">
+    <p>Delete <strong id="confirm-name"></strong>?<br/>
+    All logged hours will be gone forever.<br/>
+    <span style="font-size:0.75rem;color:var(--text-muted)">this is fine. probably.</span></p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" id="confirm-cancel">keep it</button>
+      <button class="btn" id="confirm-delete"
+              style="background:var(--danger);color:#0c0c0e;border-color:var(--danger)">delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────────────
+   HOURS — project time tracker
+   No frameworks. No build step. No regrets.
+   ───────────────────────────────────────────────────────────────────────── */
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  BACKGROUND: STAR WARS
+//  Parallax starfield with depth-layered drift + periodic hyperspace jump
+// ══════════════════════════════════════════════════════════════════════════
+
+class StarWarsBg {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx    = canvas.getContext('2d');
+    this.stars  = [];
+    this.nebulae = [];
+    this.raf    = null;
+    this.hyperProgress  = 0;   // > 0 means jump is playing
+    this.hyperDuration  = 150; // frames (~2.5s at 60fps)
+    this.hyperTimer     = null;
+    this.resize();
+  }
+
+  resize() {
+    this.canvas.width  = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this._mkStars();
+    this._mkNebulae();
+  }
+
+  _mkStars() {
+    this.stars = [];
+    // density scales with screen area, capped at 500
+    const n = Math.min(500, Math.floor(window.innerWidth * window.innerHeight / 3200));
+    for (let i = 0; i < n; i++) this.stars.push(this._newStar());
+  }
+
+  _newStar() {
+    const z = Math.random();   // 0 = distant/dim/slow, 1 = close/bright/fast
+    // subtle palette: cool white, faint blue, faint warm
+    const palettes = ['220,228,248', '200,215,255', '255,248,220', '240,235,255'];
+    const rgb = palettes[Math.floor(Math.random() * palettes.length)];
+    return {
+      x: Math.random() * this.canvas.width,
+      y: Math.random() * this.canvas.height,
+      z,
+      baseR:      0.35 + z * 1.5,
+      brightness: 0.15 + z * 0.85,
+      twPhase:    Math.random() * Math.PI * 2,
+      twSpeed:    0.007 + Math.random() * 0.022,
+      driftX:     (Math.random() - 0.5) * 0.012 * (z + 0.05),
+      driftY:     (Math.random() - 0.5) * 0.005 * (z + 0.05),
+      rgb,
+    };
+  }
+
+  _mkNebulae() {
+    this.nebulae = [];
+    const palettes = [
+      '55,30,110',   // deep violet
+      '15,55,95',    // navy
+      '70,15,50',    // dark crimson
+      '10,35,75',    // midnight blue
+      '40,60,20',    // dark olive (rare)
+    ];
+    for (let i = 0; i < 5; i++) {
+      this.nebulae.push({
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * this.canvas.height,
+        r: 100 + Math.random() * 260,
+        a: 0.035 + Math.random() * 0.065,
+        rgb: palettes[i % palettes.length],
+      });
+    }
+  }
+
+  _scheduleJump() {
+    const delay = 13000 + Math.random() * 12000; // every 13–25s
+    this.hyperTimer = setTimeout(() => {
+      if (this.raf) {
+        this.hyperProgress = 1;
+        // brief white flash on the page
+        const fl = document.getElementById('hyperspace-flash');
+        fl.style.opacity = '0.18';
+        setTimeout(() => { fl.style.opacity = '0'; }, 110);
+        this._scheduleJump();
+      }
+    }, delay);
+  }
+
+  _drawNebulae() {
+    const { ctx } = this;
+    this.nebulae.forEach(n => {
+      const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+      g.addColorStop(0,   `rgba(${n.rgb},${n.a})`);
+      g.addColorStop(0.55,`rgba(${n.rgb},${n.a * 0.35})`);
+      g.addColorStop(1,   `rgba(${n.rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  _drawStarsNormal() {
+    const { ctx } = this;
+    this.stars.forEach(s => {
+      s.twPhase += s.twSpeed;
+      s.x += s.driftX;
+      s.y += s.driftY;
+      // wrap
+      if (s.x < 0)                    s.x = this.canvas.width;
+      if (s.x > this.canvas.width)    s.x = 0;
+      if (s.y < 0)                    s.y = this.canvas.height;
+      if (s.y > this.canvas.height)   s.y = 0;
+
+      const tw    = 0.72 + 0.28 * Math.sin(s.twPhase);
+      const alpha = s.brightness * tw;
+      const r     = s.baseR * (0.65 + 0.35 * tw);
+
+      // Glow for bright foreground stars
+      if (s.z > 0.82 && s.brightness > 0.75) {
+        ctx.shadowColor = `rgba(${s.rgb},0.55)`;
+        ctx.shadowBlur  = 5;
+      }
+
+      ctx.fillStyle = `rgba(${s.rgb},${alpha.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+  }
+
+  _drawStarsHyperspace(intensity) {
+    // intensity: sin curve 0→1→0 over the jump duration
+    const { ctx, canvas } = this;
+    const cx = canvas.width  / 2;
+    const cy = canvas.height / 2;
+
+    this.stars.forEach(s => {
+      const dx   = s.x - cx;
+      const dy   = s.y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy) + 0.5;
+      const nx   = dx / dist;
+      const ny   = dy / dist;
+
+      // Close/bright stars stretch farther; central stars barely move
+      const depthFactor = 0.25 + s.z * 0.75;
+      const streakLen   = intensity * depthFactor * dist * 0.6;
+      const x2          = s.x + nx * streakLen;
+      const y2          = s.y + ny * streakLen;
+      const alpha       = Math.min(1, s.brightness * (0.5 + intensity * 0.5));
+      const lw          = s.baseR * (0.8 + intensity * 2.5);
+
+      ctx.save();
+      ctx.lineWidth   = Math.max(0.4, lw);
+      ctx.shadowColor = `rgba(180,215,255,${intensity * 0.5})`;
+      ctx.shadowBlur  = intensity * 8;
+
+      // Streak: bright white head fading to star colour
+      const g = ctx.createLinearGradient(s.x, s.y, x2, y2);
+      g.addColorStop(0,   `rgba(255,255,255,${alpha})`);
+      g.addColorStop(0.3, `rgba(${s.rgb},${alpha * 0.8})`);
+      g.addColorStop(1,   `rgba(${s.rgb},0)`);
+      ctx.strokeStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(s.x, s.y);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  draw() {
+    const { ctx, canvas } = this;
+    ctx.fillStyle = '#00000e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this._drawNebulae();
+
+    if (this.hyperProgress > 0) {
+      const t         = this.hyperProgress / this.hyperDuration;
+      const intensity = Math.sin(t * Math.PI); // 0→peak→0
+      this._drawStarsHyperspace(intensity);
+      this.hyperProgress++;
+      if (this.hyperProgress > this.hyperDuration) this.hyperProgress = 0;
+    } else {
+      this._drawStarsNormal();
+    }
+  }
+
+  start() {
+    this._scheduleJump();
+    const loop = () => { this.draw(); this.raf = requestAnimationFrame(loop); };
+    this.raf = requestAnimationFrame(loop);
+  }
+
+  stop() {
+    cancelAnimationFrame(this.raf);
+    clearTimeout(this.hyperTimer);
+    this.raf = null;
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    document.getElementById('hyperspace-flash').style.opacity = '0';
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  BACKGROUND: MATRIX
+//  Classic Katakana + symbol digital rain, green on black
+// ══════════════════════════════════════════════════════════════════════════
+
+class MatrixBg {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx    = canvas.getContext('2d');
+    this.drops  = [];
+    this.raf    = null;
+    this.fs     = 14; // font size (px) = column width
+    // Full character set: Katakana block + half-width katakana + latin + digits + symbols
+    this.glyphs = (
+      'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン' +
+      'ヴァィゥェォッャュョ' +
+      '0123456789' +
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+      '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+    );
+    this.resize();
+  }
+
+  resize() {
+    this.canvas.width  = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this._initDrops();
+  }
+
+  _initDrops() {
+    const cols = Math.floor(this.canvas.width / this.fs);
+    this.drops = [];
+    for (let i = 0; i < cols; i++) {
+      // Stagger: start columns above the screen at random heights
+      this.drops[i] = -(Math.random() * (this.canvas.height / this.fs));
+    }
+  }
+
+  _glyph() {
+    return this.glyphs[Math.floor(Math.random() * this.glyphs.length)];
+  }
+
+  draw() {
+    const { ctx, canvas, drops, fs } = this;
+
+    // Fade the previous frame — this IS the trail effect.
+    // Lower alpha = longer trail; higher = shorter. 0.045 ≈ classic Matrix look.
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.045)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = `${fs}px monospace`;
+
+    drops.forEach((y, i) => {
+      const x   = i * fs;
+      const yPx = Math.floor(y) * fs;
+
+      // Only draw when on-screen
+      if (yPx >= 0 && yPx <= canvas.height + fs) {
+        // ── Leading character: near-white with electric glow
+        ctx.fillStyle  = '#ccffcc';
+        ctx.shadowColor = '#00ff41';
+        ctx.shadowBlur  = 12;
+        ctx.fillText(this._glyph(), x, yPx);
+        ctx.shadowBlur  = 0;
+
+        // ── Second character: bright classic Matrix green
+        const y2 = (Math.floor(y) - 1) * fs;
+        if (y2 >= 0) {
+          ctx.fillStyle = '#00ff41';
+          ctx.fillText(this._glyph(), x, y2);
+        }
+      }
+
+      // Advance drop
+      drops[i] += 0.45 + Math.random() * 0.55;
+
+      // Reset column once it exits the bottom, with some randomness for stagger
+      if (drops[i] * fs > canvas.height + fs * 5 && Math.random() > 0.974) {
+        drops[i] = -(5 + Math.random() * 25);
+      }
+    });
+  }
+
+  start() {
+    const loop = () => { this.draw(); this.raf = requestAnimationFrame(loop); };
+    this.raf = requestAnimationFrame(loop);
+  }
+
+  stop() {
+    cancelAnimationFrame(this.raf);
+    this.raf = null;
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  BACKGROUND CONTROLLER
+// ══════════════════════════════════════════════════════════════════════════
+
+const BG_KEY   = 'hours_bg_v1';
+let bgMode     = 'none';
+let bgEffect   = null;
+const bgCanvas = document.getElementById('bg-canvas');
+
+function setBg(mode) {
+  if (bgEffect) { bgEffect.stop(); bgEffect = null; }
+  bgMode = mode;
+  try { localStorage.setItem(BG_KEY, mode); } catch (_) {}
+
+  document.querySelectorAll('.bg-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.bg === mode)
+  );
+
+  if (mode === 'none') {
+    bgCanvas.classList.remove('visible');
+    return;
+  }
+
+  bgCanvas.width  = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+  bgCanvas.classList.add('visible');
+
+  if (mode === 'stars')  bgEffect = new StarWarsBg(bgCanvas);
+  if (mode === 'matrix') bgEffect = new MatrixBg(bgCanvas);
+  bgEffect.start();
+}
+
+function loadBg() {
+  let saved = 'none';
+  try { saved = localStorage.getItem(BG_KEY) || 'none'; } catch (_) {}
+  setBg(saved);
+}
+
+// Debounced resize handler
+let _resizeT = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeT);
+  _resizeT = setTimeout(() => { if (bgEffect && bgEffect.resize) bgEffect.resize(); }, 160);
+});
+
+document.getElementById('bg-picker').addEventListener('click', e => {
+  const btn = e.target.closest('.bg-btn');
+  if (btn) setBg(btn.dataset.bg);
+});
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  CORE APP — project storage, render, interactions
+// ══════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'hours_projects_v1';
+let projects      = [];
+let pendingDeleteId = null;
+let currentSort     = 'none';
+
+// ── Persistence ────────────────────────────────────────────────────────────
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); } catch (_) {}
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) projects = JSON.parse(raw);
+  } catch (_) { projects = []; }
+  if (!Array.isArray(projects)) projects = [];
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function fmtHours(h) {
+  const r = Math.round(h * 10) / 10;
+  return r % 1 === 0 ? r.toFixed(0) : r.toFixed(1);
+}
+
+function totalHoursAll() {
+  return projects.reduce((acc, p) => acc + p.hours, 0);
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+
+let _toastT = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+
+function sortedProjects() {
+  const arr = projects.slice();
+  if (currentSort === 'hours') arr.sort((a, b) => b.hours - a.hours);
+  if (currentSort === 'alpha') arr.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  return arr;
+}
+
+function render() {
+  const list   = document.getElementById('project-list');
+  const footer = document.getElementById('footer-bar');
+  const stat   = document.getElementById('footer-stat');
+  const sortBar = document.getElementById('sort-bar');
+
+  list.innerHTML = '';
+
+  if (projects.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">⏱</span>
+        <strong>no projects yet</strong>
+        give your time somewhere to live
+      </div>`;
+    footer.style.display = 'none';
+    sortBar.style.display = 'none';
+    return;
+  }
+
+  footer.style.display = 'flex';
+  sortBar.style.display = 'flex';
+  const total = totalHoursAll();
+  stat.innerHTML = `<strong>${fmtHours(total)}h</strong> logged across ${projects.length} project${projects.length !== 1 ? 's' : ''}`;
+
+  sortedProjects().forEach(p => {
+    const card = document.createElement('div');
+    card.className  = 'project-card';
+    card.dataset.id = p.id;
+
+    const last   = p.history && p.history.length > 0 ? p.history[p.history.length - 1] : null;
+    const canUndo = !!last;
+
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="project-name" title="${escHtml(p.name)}">${escHtml(p.name)}</span>
+        <span>
+          <span class="hours-display">${fmtHours(p.hours)}</span>
+          <span class="hours-unit">h</span>
+        </span>
+      </div>
+      <div class="card-actions">
+        <button class="btn-hour" data-id="${p.id}" data-delta="1"   title="Log 1 hour">+1h</button>
+        <button class="btn-hour" data-id="${p.id}" data-delta="0.5" title="Log 30 min">+½h</button>
+        <span class="spacer"></span>
+        <button class="btn-edit"   data-id="${p.id}" title="Rename">✎</button>
+        <button class="btn-danger" data-id="${p.id}" title="Delete">✕</button>
+      </div>
+      <div class="undo-hint ${canUndo ? 'visible' : ''}" id="undo-${p.id}">
+        ${canUndo ? `+${last.delta}h just now — <span class="undo-link" data-id="${p.id}">oops, undo</span>` : ''}
+      </div>`;
+
+    list.appendChild(card);
+  });
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Project ops ────────────────────────────────────────────────────────────
+
+function addProject(name) {
+  name = name.trim();
+  if (!name) return false;
+  if (projects.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+    showToast('you already have that one 👀'); return false;
+  }
+  projects.unshift({ id: uid(), name, hours: 0, history: [] });
+  save(); render();
+  showToast(`"${name}" is ready to absorb your time`);
+  return true;
+}
+
+function logHours(id, delta) {
+  const p = projects.find(p => p.id === id);
+  if (!p) return;
+  p.hours = Math.round((p.hours + delta) * 10) / 10;
+  p.history = p.history || [];
+  p.history.push({ delta, ts: Date.now() });
+  save();
+
+  const card = document.querySelector(`.project-card[data-id="${id}"]`);
+  if (!card) return;
+  card.classList.remove('bump');
+  void card.offsetWidth;
+  card.classList.add('bump');
+
+  const disp = card.querySelector('.hours-display');
+  if (disp) disp.textContent = fmtHours(p.hours);
+
+  const hint = card.querySelector('.undo-hint');
+  if (hint) {
+    hint.innerHTML = `+${delta}h just now — <span class="undo-link" data-id="${id}">oops, undo</span>`;
+    hint.classList.add('visible');
+  }
+
+  const stat = document.getElementById('footer-stat');
+  if (stat) {
+    const total = totalHoursAll();
+    stat.innerHTML = `<strong>${fmtHours(total)}h</strong> logged across ${projects.length} project${projects.length !== 1 ? 's' : ''}`;
+  }
+}
+
+function undoLast(id) {
+  const p = projects.find(p => p.id === id);
+  if (!p || !p.history || !p.history.length) return;
+  const last = p.history.pop();
+  p.hours = Math.max(0, Math.round((p.hours - last.delta) * 10) / 10);
+  save(); render();
+  showToast(`undone — ${last.delta}h taken back from "${p.name}"`);
+}
+
+function deleteProject(id) {
+  const idx = projects.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  const name = projects[idx].name;
+  projects.splice(idx, 1);
+  save(); render();
+  showToast(`"${name}" is gone. goodbye forever.`);
+}
+
+function renameProject(id, newName) {
+  newName = newName.trim();
+  if (!newName) return;
+  const p = projects.find(p => p.id === id);
+  if (!p || p.name === newName) return;
+  p.name = newName;
+  save(); render();
+}
+
+// ── Inline edit ────────────────────────────────────────────────────────────
+
+function startEdit(id) {
+  const card  = document.querySelector(`.project-card[data-id="${id}"]`);
+  const nameEl = card && card.querySelector('.project-name');
+  const p      = projects.find(p => p.id === id);
+  if (!nameEl || !p) return;
+
+  const inp = document.createElement('input');
+  inp.type      = 'text';
+  inp.className = 'project-name-input';
+  inp.value     = p.name;
+  inp.maxLength = 64;
+  inp.spellcheck = false;
+  nameEl.replaceWith(inp);
+  inp.focus(); inp.select();
+
+  function commit() {
+    const val  = inp.value.trim() || p.name;
+    const span = document.createElement('span');
+    span.className = 'project-name';
+    span.title = val; span.textContent = val;
+    inp.replaceWith(span);
+    renameProject(id, val);
+  }
+
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); inp.blur(); }
+    if (e.key === 'Escape') { inp.value = p.name; inp.blur(); }
+  });
+}
+
+// ── Export / Import ────────────────────────────────────────────────────────
+
+function exportJSON() {
+  const blob = new Blob(
+    [JSON.stringify({ exported: new Date().toISOString(), projects }, null, 2)],
+    { type: 'application/json' }
+  );
+  const url = URL.createObjectURL(blob);
+  const a   = Object.assign(document.createElement('a'), {
+    href: url, download: `hours-backup-${new Date().toISOString().slice(0,10)}.json`
+  });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast('backed up. good instincts.');
+}
+
+function importJSON(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const parsed   = JSON.parse(e.target.result);
+      const incoming = parsed.projects || (Array.isArray(parsed) ? parsed : null);
+      if (!incoming) throw new Error();
+      const map = Object.fromEntries(projects.map(p => [p.id, p]));
+      incoming.forEach(p => { if (p.id && p.name != null) map[p.id] = p; });
+      projects = Object.values(map);
+      save(); render();
+      showToast(`imported ${incoming.length} project(s) — welcome back`);
+    } catch (_) { showToast('hmm, that JSON looked a bit off'); }
+  };
+  r.readAsText(file);
+}
+
+// ── Delete confirm ─────────────────────────────────────────────────────────
+
+function openConfirm(id) {
+  const p = projects.find(p => p.id === id);
+  if (!p) return;
+  pendingDeleteId = id;
+  document.getElementById('confirm-name').textContent = `"${p.name}"`;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeConfirm() {
+  pendingDeleteId = null;
+  document.getElementById('overlay').classList.remove('open');
+}
+
+// ── Event wiring ───────────────────────────────────────────────────────────
+
+document.getElementById('project-list').addEventListener('click', e => {
+  const t = e.target;
+  if      (t.classList.contains('btn-hour'))   logHours(t.dataset.id, parseFloat(t.dataset.delta));
+  else if (t.classList.contains('undo-link'))  undoLast(t.dataset.id);
+  else if (t.classList.contains('btn-edit'))   startEdit(t.dataset.id);
+  else if (t.classList.contains('btn-danger')) openConfirm(t.dataset.id);
+});
+
+document.getElementById('add-btn').addEventListener('click', () => {
+  const inp = document.getElementById('project-input');
+  if (addProject(inp.value)) inp.value = '';
+  inp.focus();
+});
+
+document.getElementById('project-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (addProject(e.target.value)) e.target.value = '';
+  }
+});
+
+document.getElementById('confirm-delete').addEventListener('click', () => {
+  if (pendingDeleteId) deleteProject(pendingDeleteId);
+  closeConfirm();
+});
+
+document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+
+document.getElementById('overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay')) closeConfirm();
+});
+
+document.getElementById('export-btn').addEventListener('click', exportJSON);
+
+document.getElementById('import-btn').addEventListener('click', () =>
+  document.getElementById('import-file').click()
+);
+
+document.getElementById('import-file').addEventListener('change', e => {
+  importJSON(e.target.files[0]);
+  e.target.value = '';
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(); });
+
+document.getElementById('sort-bar').addEventListener('click', e => {
+  const btn = e.target.closest('.sort-btn');
+  if (!btn) return;
+  currentSort = btn.dataset.sort;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b === btn));
+  render();
+});
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+
+load();
+render();
+loadBg(); // restore last chosen background
+</script>
+</body>
+</html>
