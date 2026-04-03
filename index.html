@@ -334,6 +334,31 @@
     }
     .btn-edit:hover { opacity: 1; border-color: var(--border2); background: var(--surface2); }
 
+    .custom-hour-input {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text); font-family: var(--font);
+      font-size: 0.78rem; font-weight: 700; width: 3.8rem; padding: 0.35rem 0.4rem;
+      text-align: center; outline: none; transition: border-color var(--transition);
+      -moz-appearance: textfield;
+    }
+    .custom-hour-input::-webkit-inner-spin-button,
+    .custom-hour-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    .custom-hour-input::placeholder { color: var(--text-muted); font-weight: 400; }
+    .custom-hour-input:focus { border-color: var(--accent); }
+
+    .btn-log-custom {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted);
+      font-family: var(--font); font-size: 0.72rem; font-weight: 600;
+      padding: 0.35rem 0.5rem; border-radius: var(--radius); cursor: pointer;
+      transition: all var(--transition); letter-spacing: 0.03em;
+    }
+    .btn-log-custom:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+    .last-logged {
+      font-size: 0.68rem; color: var(--text-muted); letter-spacing: 0.03em;
+      margin-top: 0.15rem; opacity: 0.7;
+    }
+
     .undo-hint {
       font-size: 0.7rem; color: var(--text-muted); margin-top: 0.35rem;
       opacity: 0; transition: opacity 200ms ease; letter-spacing: 0.03em; height: 1rem;
@@ -385,6 +410,91 @@
     .confirm-box p { margin-bottom: 1rem; line-height: 1.6; }
     .confirm-box strong { color: var(--danger); }
     .confirm-box .confirm-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+    /* ── Color dot ────────────────────────────────────────────────────── */
+    .color-dot {
+      width: 10px; height: 10px; border-radius: 50%; cursor: pointer;
+      flex-shrink: 0; transition: transform var(--transition);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .color-dot:hover { transform: scale(1.4); }
+
+    /* ── Note input ───────────────────────────────────────────────────── */
+    .note-row { margin-top: 0.35rem; }
+    .note-input {
+      background: transparent; border: none;
+      border-bottom: 1px dashed var(--border);
+      color: var(--text-muted); font-family: var(--font);
+      font-size: 0.72rem; padding: 0.2rem 0; width: 100%;
+      outline: none; transition: border-color var(--transition), color var(--transition);
+    }
+    .note-input::placeholder { color: var(--text-muted); opacity: 0.4; }
+    .note-input:focus { border-bottom-color: var(--accent); border-bottom-style: solid; color: var(--text); }
+
+    /* ── Chart ────────────────────────────────────────────────────────── */
+    .chart-section {
+      margin-top: 2rem; padding: 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .chart-header {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 1rem;
+    }
+    .chart-title {
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 0.1em; color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .chart-toggle { display: flex; gap: 0.25rem; }
+    .chart-toggle-btn {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); font-family: var(--font);
+      font-size: 0.68rem; padding: 2px 8px;
+      border-radius: var(--radius); cursor: pointer;
+      transition: all var(--transition);
+    }
+    .chart-toggle-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+    .chart-toggle-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(232,162,58,0.08); }
+    .chart-container {
+      display: flex; align-items: flex-end; gap: 4px;
+      min-height: 120px;
+    }
+    .chart-col {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; gap: 0.2rem;
+    }
+    .chart-bar {
+      width: 100%; display: flex; flex-direction: column;
+      justify-content: flex-end;
+      border-radius: 3px 3px 0 0; overflow: hidden; min-height: 0;
+    }
+    .chart-seg { width: 100%; opacity: 0.85; }
+    .chart-seg:first-child { border-radius: 3px 3px 0 0; }
+    .chart-total {
+      font-size: 0.58rem; color: var(--text-muted);
+      letter-spacing: 0.02em; min-height: 0.9em;
+    }
+    .chart-label {
+      font-size: 0.6rem; color: var(--text-muted);
+      letter-spacing: 0.02em; white-space: nowrap;
+    }
+    .chart-legend {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem;
+      margin-top: 0.75rem; padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .chart-legend-item {
+      display: flex; align-items: center; gap: 0.25rem;
+      font-size: 0.62rem; color: var(--text-muted);
+    }
+    .chart-legend-dot {
+      width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+    }
+    .chart-empty {
+      text-align: center; padding: 1.5rem;
+      color: var(--text-muted); font-size: 0.75rem;
+    }
 
     /* ── Responsive ──────────────────────────────────────────────────── */
     @media (max-width: 420px) {
@@ -438,11 +548,24 @@
   <!-- ── Project list ────────────────────────────────────────────────── -->
   <div id="project-list"></div>
 
+  <!-- ── Chart ───────────────────────────────────────────────────────── -->
+  <div class="chart-section" id="chart-section" style="display:none">
+    <div class="chart-header">
+      <span class="chart-title">TIME CHART</span>
+      <div class="chart-toggle" id="chart-toggle">
+        <button class="chart-toggle-btn active" data-range="week">7 days</button>
+        <button class="chart-toggle-btn" data-range="month">4 weeks</button>
+      </div>
+    </div>
+    <div id="chart-container" class="chart-container"></div>
+  </div>
+
   <!-- ── Footer ─────────────────────────────────────────────────────── -->
   <div class="footer-bar" id="footer-bar" style="display:none">
     <span class="footer-stat" id="footer-stat"></span>
     <div class="footer-actions">
-      <button class="btn btn-ghost" id="export-btn">↓ export</button>
+      <button class="btn btn-ghost" id="export-btn">↓ json</button>
+      <button class="btn btn-ghost" id="export-csv-btn">↓ csv</button>
       <button class="btn btn-ghost" id="import-btn">↑ import</button>
       <input type="file" id="import-file" accept=".json" style="display:none" />
     </div>
@@ -830,6 +953,18 @@ const STORAGE_KEY = 'hours_projects_v1';
 let projects      = [];
 let pendingDeleteId = null;
 let currentSort     = 'none';
+let chartRange      = 'week';
+
+const TAG_COLORS = [
+  { name: 'amber',  hex: '#e8a23a' },
+  { name: 'blue',   hex: '#60a5fa' },
+  { name: 'green',  hex: '#4ade80' },
+  { name: 'purple', hex: '#c084fc' },
+  { name: 'pink',   hex: '#f472b6' },
+  { name: 'red',    hex: '#f87171' },
+  { name: 'cyan',   hex: '#22d3ee' },
+  { name: 'slate',  hex: '#94a3b8' },
+];
 
 // ── Persistence ────────────────────────────────────────────────────────────
 
@@ -854,6 +989,25 @@ function uid() {
 function fmtHours(h) {
   const r = Math.round(h * 10) / 10;
   return r % 1 === 0 ? r.toFixed(0) : r.toFixed(1);
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fmtRelative(ts) {
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  return fmtDate(ts);
 }
 
 function totalHoursAll() {
@@ -897,6 +1051,7 @@ function render() {
       </div>`;
     footer.style.display = 'none';
     sortBar.style.display = 'none';
+    document.getElementById('chart-section').style.display = 'none';
     return;
   }
 
@@ -912,9 +1067,12 @@ function render() {
 
     const last   = p.history && p.history.length > 0 ? p.history[p.history.length - 1] : null;
     const canUndo = !!last;
+    const lastDate = last && last.ts ? fmtDate(last.ts) : null;
+    const pColor = p.color || TAG_COLORS[0].hex;
 
     card.innerHTML = `
       <div class="card-top">
+        <span class="color-dot" data-id="${p.id}" style="background:${pColor}" title="Click to change color"></span>
         <span class="project-name" title="${escHtml(p.name)}">${escHtml(p.name)}</span>
         <span>
           <span class="hours-display">${fmtHours(p.hours)}</span>
@@ -924,16 +1082,26 @@ function render() {
       <div class="card-actions">
         <button class="btn-hour" data-id="${p.id}" data-delta="1"   title="Log 1 hour">+1h</button>
         <button class="btn-hour" data-id="${p.id}" data-delta="0.5" title="Log 30 min">+½h</button>
+        <input class="custom-hour-input" data-id="${p.id}" type="number" step="0.5" min="0.5" placeholder="h" title="Custom hours" />
+        <button class="btn-log-custom" data-id="${p.id}" title="Log custom hours">+log</button>
         <span class="spacer"></span>
         <button class="btn-edit"   data-id="${p.id}" title="Rename">✎</button>
         <button class="btn-danger" data-id="${p.id}" title="Delete">✕</button>
       </div>
+      <div class="note-row">
+        <input class="note-input" data-id="${p.id}" type="text" placeholder="note (optional)..." maxlength="120" spellcheck="false" />
+      </div>
+      ${lastDate ? `<div class="last-logged">last logged: ${lastDate}</div>` : ''}
       <div class="undo-hint ${canUndo ? 'visible' : ''}" id="undo-${p.id}">
-        ${canUndo ? `+${last.delta}h just now — <span class="undo-link" data-id="${p.id}">oops, undo</span>` : ''}
+        ${canUndo ? `+${last.delta}h ${fmtRelative(last.ts)}${last.note ? ` — "${escHtml(last.note)}"` : ''} — <span class="undo-link" data-id="${p.id}">oops, undo</span>` : ''}
       </div>`;
+
+    card.style.borderLeft = `3px solid ${pColor}`;
 
     list.appendChild(card);
   });
+
+  renderChart();
 }
 
 function escHtml(s) {
@@ -948,18 +1116,21 @@ function addProject(name) {
   if (projects.find(p => p.name.toLowerCase() === name.toLowerCase())) {
     showToast('you already have that one 👀'); return false;
   }
-  projects.unshift({ id: uid(), name, hours: 0, history: [] });
+  const color = TAG_COLORS[projects.length % TAG_COLORS.length].hex;
+  projects.unshift({ id: uid(), name, hours: 0, history: [], color });
   save(); render();
   showToast(`"${name}" is ready to absorb your time`);
   return true;
 }
 
-function logHours(id, delta) {
+function logHours(id, delta, note) {
   const p = projects.find(p => p.id === id);
   if (!p) return;
   p.hours = Math.round((p.hours + delta) * 10) / 10;
   p.history = p.history || [];
-  p.history.push({ delta, ts: Date.now() });
+  const entry = { delta, ts: Date.now() };
+  if (note) entry.note = note;
+  p.history.push(entry);
   save();
 
   const card = document.querySelector(`.project-card[data-id="${id}"]`);
@@ -973,15 +1144,32 @@ function logHours(id, delta) {
 
   const hint = card.querySelector('.undo-hint');
   if (hint) {
-    hint.innerHTML = `+${delta}h just now — <span class="undo-link" data-id="${id}">oops, undo</span>`;
+    const noteText = note ? ` — "${escHtml(note)}"` : '';
+    hint.innerHTML = `+${delta}h just now${noteText} — <span class="undo-link" data-id="${id}">oops, undo</span>`;
     hint.classList.add('visible');
   }
+
+  // Clear note input
+  const noteInput = card.querySelector('.note-input');
+  if (noteInput) noteInput.value = '';
+
+  // Update last-logged date inline
+  let dateLine = card.querySelector('.last-logged');
+  if (!dateLine) {
+    dateLine = document.createElement('div');
+    dateLine.className = 'last-logged';
+    const noteRow = card.querySelector('.note-row');
+    if (noteRow) noteRow.after(dateLine);
+  }
+  dateLine.textContent = `last logged: ${fmtDate(Date.now())}`;
 
   const stat = document.getElementById('footer-stat');
   if (stat) {
     const total = totalHoursAll();
     stat.innerHTML = `<strong>${fmtHours(total)}h</strong> logged across ${projects.length} project${projects.length !== 1 ? 's' : ''}`;
   }
+
+  renderChart();
 }
 
 function undoLast(id) {
@@ -1060,6 +1248,30 @@ function exportJSON() {
   showToast('backed up. good instincts.');
 }
 
+function exportCSV() {
+  const csvEsc = s => `"${String(s).replace(/"/g, '""')}"`;
+  const rows = [['project','date','hours','note']];
+  projects.forEach(p => {
+    if (!p.history || p.history.length === 0) {
+      rows.push([p.name, '', fmtHours(p.hours), '']);
+    } else {
+      p.history.forEach(h => {
+        const d = h.ts ? new Date(h.ts).toISOString().slice(0, 10) : '';
+        rows.push([p.name, d, h.delta, h.note || '']);
+      });
+    }
+  });
+  const csv = rows.map(r => r.map(csvEsc).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), {
+    href: url, download: `hours-${new Date().toISOString().slice(0,10)}.csv`
+  });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast('csv exported. spreadsheet time.');
+}
+
 function importJSON(file) {
   if (!file) return;
   const r = new FileReader();
@@ -1093,14 +1305,146 @@ function closeConfirm() {
   document.getElementById('overlay').classList.remove('open');
 }
 
+// ── Color cycle ────────────────────────────────────────────────────────────
+
+function cycleColor(id) {
+  const p = projects.find(p => p.id === id);
+  if (!p) return;
+  const currentIdx = TAG_COLORS.findIndex(c => c.hex === p.color);
+  const nextIdx = (currentIdx + 1) % TAG_COLORS.length;
+  p.color = TAG_COLORS[nextIdx].hex;
+  save();
+  const card = document.querySelector(`.project-card[data-id="${id}"]`);
+  if (card) {
+    const dot = card.querySelector('.color-dot');
+    if (dot) dot.style.background = p.color;
+    card.style.borderLeftColor = p.color;
+  }
+  renderChart();
+}
+
+// ── Chart ──────────────────────────────────────────────────────────────────
+
+function dayKey(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function weekKey(ts) {
+  const d = new Date(ts);
+  const day = d.getDay() || 7;
+  const mon = new Date(d);
+  mon.setDate(d.getDate() - day + 1);
+  return `${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
+}
+
+function renderChart() {
+  const section   = document.getElementById('chart-section');
+  const container = document.getElementById('chart-container');
+  const hasHistory = projects.some(p => p.history && p.history.length > 0);
+
+  if (projects.length === 0 || !hasHistory) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  const now = new Date();
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let buckets = [], labels = [];
+
+  if (chartRange === 'week') {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      buckets.push(dayKey(d.getTime()));
+      labels.push(i === 0 ? 'today' : dayNames[d.getDay()]);
+    }
+  } else {
+    for (let i = 3; i >= 0; i--) {
+      const d = new Date(now); d.setDate(d.getDate() - i * 7);
+      buckets.push(weekKey(d.getTime()));
+      labels.push(i === 0 ? 'this wk' : `${i}w ago`);
+    }
+  }
+
+  const keyFn = chartRange === 'week' ? dayKey : weekKey;
+  const data = buckets.map(bk => {
+    const segments = [];
+    projects.forEach(p => {
+      const hrs = (p.history || [])
+        .filter(h => keyFn(h.ts) === bk)
+        .reduce((sum, h) => sum + h.delta, 0);
+      if (hrs > 0) segments.push({ name: p.name, color: p.color || TAG_COLORS[0].hex, hours: hrs });
+    });
+    return { key: bk, segments, total: segments.reduce((s, seg) => s + seg.hours, 0) };
+  });
+
+  const maxHours = Math.max(0.5, ...data.map(d => d.total));
+  const maxBarH  = 90;
+
+  // Collect legend entries (projects that appear in chart)
+  const legendSet = new Map();
+  data.forEach(col => col.segments.forEach(seg => { if (!legendSet.has(seg.name)) legendSet.set(seg.name, seg.color); }));
+
+  const barsHtml = data.map((col, i) => {
+    const segsHtml = col.segments.map(seg => {
+      const h = Math.max(2, (seg.hours / maxHours) * maxBarH);
+      return `<div class="chart-seg" style="height:${h}px;background:${seg.color}" title="${escHtml(seg.name)}: ${fmtHours(seg.hours)}h"></div>`;
+    }).join('');
+    const totalLabel = col.total > 0 ? `${fmtHours(col.total)}h` : '';
+    return `<div class="chart-col">
+      <span class="chart-total">${totalLabel}</span>
+      <div class="chart-bar" style="height:${maxBarH}px">${segsHtml}</div>
+      <span class="chart-label">${labels[i]}</span>
+    </div>`;
+  }).join('');
+
+  const legendHtml = legendSet.size > 0 ? `<div class="chart-legend">${
+    Array.from(legendSet).map(([name, color]) =>
+      `<span class="chart-legend-item"><span class="chart-legend-dot" style="background:${color}"></span>${escHtml(name)}</span>`
+    ).join('')
+  }</div>` : '';
+
+  if (data.every(d => d.total === 0)) {
+    container.innerHTML = `<div class="chart-empty">no hours logged in this period</div>`;
+  } else {
+    container.innerHTML = barsHtml + legendHtml;
+  }
+}
+
 // ── Event wiring ───────────────────────────────────────────────────────────
 
 document.getElementById('project-list').addEventListener('click', e => {
   const t = e.target;
-  if      (t.classList.contains('btn-hour'))   logHours(t.dataset.id, parseFloat(t.dataset.delta));
+  if (t.classList.contains('btn-hour')) {
+    const card = t.closest('.project-card');
+    const noteInput = card && card.querySelector('.note-input');
+    const note = noteInput ? noteInput.value.trim() : '';
+    logHours(t.dataset.id, parseFloat(t.dataset.delta), note);
+  }
+  else if (t.classList.contains('btn-log-custom')) {
+    const card  = t.closest('.project-card');
+    const input = card && card.querySelector('.custom-hour-input');
+    const noteInput = card && card.querySelector('.note-input');
+    const note = noteInput ? noteInput.value.trim() : '';
+    if (input) {
+      const val = parseFloat(input.value);
+      if (val > 0 && val <= 24) { logHours(t.dataset.id, Math.round(val * 10) / 10, note); input.value = ''; }
+      else { showToast('enter a value between 0.5 and 24'); input.focus(); }
+    }
+  }
   else if (t.classList.contains('undo-link'))  undoLast(t.dataset.id);
   else if (t.classList.contains('btn-edit'))   startEdit(t.dataset.id);
   else if (t.classList.contains('btn-danger')) openConfirm(t.dataset.id);
+  else if (t.classList.contains('color-dot'))  cycleColor(t.dataset.id);
+});
+
+document.getElementById('project-list').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.classList.contains('custom-hour-input')) {
+    const card = e.target.closest('.project-card');
+    const btn  = card && card.querySelector('.btn-log-custom');
+    if (btn) btn.click();
+  }
 });
 
 document.getElementById('add-btn').addEventListener('click', () => {
@@ -1127,6 +1471,7 @@ document.getElementById('overlay').addEventListener('click', e => {
 });
 
 document.getElementById('export-btn').addEventListener('click', exportJSON);
+document.getElementById('export-csv-btn').addEventListener('click', exportCSV);
 
 document.getElementById('import-btn').addEventListener('click', () =>
   document.getElementById('import-file').click()
@@ -1145,6 +1490,14 @@ document.getElementById('sort-bar').addEventListener('click', e => {
   currentSort = btn.dataset.sort;
   document.querySelectorAll('.sort-btn').forEach(b => b.classList.toggle('active', b === btn));
   render();
+});
+
+document.getElementById('chart-toggle').addEventListener('click', e => {
+  const btn = e.target.closest('.chart-toggle-btn');
+  if (!btn) return;
+  chartRange = btn.dataset.range;
+  document.querySelectorAll('.chart-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+  renderChart();
 });
 
 // ── Boot ───────────────────────────────────────────────────────────────────
