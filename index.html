@@ -521,7 +521,7 @@
   <header>
     <div class="header-top">
       <h1>HOURS</h1>
-      <span class="header-tag">v1</span>
+      <a class="header-tag" id="version-tag" href="#" title="Commit">v1</a>
 
       <div class="bg-picker" id="bg-picker">
         <span class="bg-picker-label">bg</span>
@@ -2315,6 +2315,32 @@ document.getElementById('chart-toggle').addEventListener('click', e => {
 load();
 render();
 loadBg(); // restore last chosen background
+
+// Fetch commit ID from GitHub API
+function loadCommitId() {
+  const versionTag = document.getElementById('version-tag');
+  if (!versionTag) return;
+  
+  // Set to 'main' or 'master' depending on your default branch
+  const branch = 'main';
+  const repoPath = 'cool-sandro/tracker'; // Update with your username/repo
+  
+  fetch(`https://api.github.com/repos/${repoPath}/commits/${branch}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.sha) {
+        const shortId = data.sha.slice(0, 7);
+        versionTag.href = `https://github.com/${repoPath}/commit/${data.sha}`;
+        versionTag.textContent = shortId;
+        versionTag.title = `Commit ${data.sha}`;
+        versionTag.target = '_blank';
+        versionTag.rel = 'noopener noreferrer';
+      }
+    })
+    .catch(() => {}); // Silently fail if API is unavailable
+}
+
+loadCommitId();
 </script>
 </body>
 </html>
