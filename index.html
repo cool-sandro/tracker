@@ -259,6 +259,78 @@
     .empty-state .empty-icon { font-size: 2rem; display: block; margin-bottom: 0.75rem; opacity: 0.5; }
     .empty-state strong { display: block; color: var(--text); margin-bottom: 0.3rem; font-size: 0.875rem; }
 
+    /* ── Section nav tabs ────────────────────────────────────────────── */
+    .section-nav {
+      display: flex; align-items: center;
+      gap: 0.25rem; flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-tab {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-muted); font-family: var(--font);
+      font-size: 0.75rem; letter-spacing: 0.05em;
+      padding: 0.35rem 0.75rem; border-radius: var(--radius);
+      cursor: pointer; transition: all var(--transition);
+      white-space: nowrap; text-transform: uppercase; font-weight: 600;
+    }
+    .section-tab:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+    .section-tab.active {
+      border-color: var(--accent); color: var(--accent);
+      background: rgba(232,162,58,0.08);
+    }
+    .section-tab-add {
+      background: transparent; border: 1px dashed var(--border);
+      color: var(--text-muted); font-family: var(--font);
+      font-size: 0.72rem; letter-spacing: 0.04em;
+      padding: 0.3rem 0.6rem; border-radius: var(--radius);
+      cursor: pointer; transition: all var(--transition);
+      margin-left: 0.1rem;
+    }
+    .section-tab-add:hover { border-color: var(--accent); color: var(--accent); background: rgba(232,162,58,0.06); }
+
+    /* ── Section page header ─────────────────────────────────────────── */
+    .section-page-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .section-page-title {
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.08em;
+      color: var(--accent); text-transform: uppercase; flex: 1;
+    }
+    .section-page-tools { display: flex; gap: 0.25rem; }
+    .btn-section-edit {
+      background: transparent; border: 1px solid transparent; color: var(--text-muted);
+      font-family: var(--font); font-size: 0.7rem; padding: 0.3rem 0.5rem;
+      border-radius: var(--radius); cursor: pointer; transition: all var(--transition); opacity: 0.35;
+    }
+    .btn-section-edit:hover { opacity: 1; border-color: var(--border2); background: var(--surface2); }
+
+    /* ── Section overview cards ──────────────────────────────────────── */
+    .section-overview {
+      display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;
+    }
+    .section-overview-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.85rem 1rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      cursor: pointer; transition: border-color var(--transition), background var(--transition);
+    }
+    .section-overview-card:hover { border-color: var(--border2); background: var(--surface2); }
+    .section-overview-name {
+      flex: 1; font-size: 0.875rem; font-weight: 700;
+      letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent);
+    }
+    .section-overview-meta { font-size: 0.72rem; color: var(--text-muted); letter-spacing: 0.04em; }
+    .section-overview-hours {
+      font-size: 1.1rem; font-weight: 700; color: var(--accent); letter-spacing: 0.04em;
+    }
+    .section-overview-chevron { color: var(--text-muted); font-size: 0.8rem; opacity: 0.5; }
+
+    /* ── Section styles ─────────────────────────────────────────────── */
+    .section-projects { display: flex; flex-direction: column; gap: 0.5rem; }
+
     /* ── Project list & card ──────────────────────────────────────────── */
     #project-list { display: flex; flex-direction: column; gap: 0.5rem; }
 
@@ -536,10 +608,19 @@
     <p class="header-sub">your time matters. log it. <span>◆</span> or it never happened.</p>
   </header>
 
+  <!-- ── Section nav ────────────────────────────────────────────────── -->
+  <div class="section-nav" id="section-nav" style="display:none"></div>
+
   <!-- ── Add project form ────────────────────────────────────────────── -->
   <div class="add-form">
     <input id="project-input" type="text" maxlength="64"
            placeholder="new project name..." autocomplete="off" spellcheck="false" />
+    <select id="section-select" title="Add to section" style="
+      display:none;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      font-family: var(--font); font-size: 0.875rem; padding: 0.6rem 0.8rem;
+      border-radius: var(--radius); outline: none; transition: border-color var(--transition); cursor: pointer;">
+    </select>
     <button class="btn btn-primary" id="add-btn">+ add</button>
   </div>
 
@@ -1760,10 +1841,14 @@ document.getElementById('bg-picker').addEventListener('click', e => {
 // ══════════════════════════════════════════════════════════════════════════
 
 const STORAGE_KEY = 'hours_projects_v1';
+const SECTIONS_KEY = 'hours_sections_v1';
 let projects      = [];
+let sections      = []; // Array of {id, name}
 let pendingDeleteId = null;
+let pendingDeleteSectionId = null;
 let currentSort     = 'none';
 let chartRange      = 'week';
+let activeSectionId = 'all'; // 'all' | section.id | '__none__'
 
 const TAG_COLORS = [
   { name: 'amber',  hex: '#e8a23a' },
@@ -1779,15 +1864,21 @@ const TAG_COLORS = [
 // ── Persistence ────────────────────────────────────────────────────────────
 
 function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); } catch (_) {}
+  try { 
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
+  } catch (_) {}
 }
 
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) projects = JSON.parse(raw);
-  } catch (_) { projects = []; }
+    const sectionsRaw = localStorage.getItem(SECTIONS_KEY);
+    if (sectionsRaw) sections = JSON.parse(sectionsRaw);
+  } catch (_) { projects = []; sections = []; }
   if (!Array.isArray(projects)) projects = [];
+  if (!Array.isArray(sections)) sections = [];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1837,6 +1928,79 @@ function showToast(msg) {
 
 // ── Render ─────────────────────────────────────────────────────────────────
 
+function renderSectionSelect() {
+  const select = document.getElementById('section-select');
+  select.innerHTML = '<option value="">— no section —</option>';
+  sections.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    select.appendChild(opt);
+  });
+  // Only show section dropdown when viewing "all" and sections exist
+  select.style.display = (activeSectionId === 'all' && sections.length > 0) ? '' : 'none';
+  if (activeSectionId !== 'all') {
+    select.value = activeSectionId === '__none__' ? '' : (activeSectionId || '');
+  }
+}
+
+function renderSectionNav() {
+  const nav = document.getElementById('section-nav');
+  const hasUncategorized = projects.some(p => !p.sectionId);
+
+  // Only show nav when there's at least one section
+  if (sections.length === 0) {
+    nav.style.display = 'none';
+    return;
+  }
+
+  nav.style.display = 'flex';
+  nav.innerHTML = '';
+
+  // "All" tab
+  const allBtn = document.createElement('button');
+  allBtn.className = 'section-tab' + (activeSectionId === 'all' ? ' active' : '');
+  allBtn.textContent = 'all';
+  allBtn.dataset.navSection = 'all';
+  nav.appendChild(allBtn);
+
+  // One tab per section
+  sections.forEach(s => {
+    const tab = document.createElement('button');
+    tab.className = 'section-tab' + (activeSectionId === s.id ? ' active' : '');
+    tab.textContent = s.name;
+    tab.dataset.navSection = s.id;
+    nav.appendChild(tab);
+  });
+
+  // Uncategorized tab (only if there are uncategorized projects)
+  if (hasUncategorized) {
+    const tab = document.createElement('button');
+    tab.className = 'section-tab' + (activeSectionId === '__none__' ? ' active' : '');
+    tab.textContent = 'uncategorized';
+    tab.dataset.navSection = '__none__';
+    nav.appendChild(tab);
+  }
+
+  // "+ new section" inline button
+  const addTab = document.createElement('button');
+  addTab.className = 'section-tab-add';
+  addTab.textContent = '+ section';
+  addTab.id = 'add-section-btn';
+  nav.appendChild(addTab);
+
+  // Update input placeholder to reflect where projects will land
+  const inp = document.getElementById('project-input');
+  if (activeSectionId !== 'all' && activeSectionId !== '__none__') {
+    const s = sections.find(s => s.id === activeSectionId);
+    if (s) inp.placeholder = `new project in "${s.name}"...`;
+  } else {
+    inp.placeholder = 'new project name...';
+  }
+
+  renderSectionSelect();
+}
+
 function sortedProjects() {
   const arr = projects.slice();
   if (currentSort === 'hours') arr.sort((a, b) => b.hours - a.hours);
@@ -1845,20 +2009,131 @@ function sortedProjects() {
 }
 
 function render() {
-  const list   = document.getElementById('project-list');
-  const footer = document.getElementById('footer-bar');
-  const stat   = document.getElementById('footer-stat');
+  const list    = document.getElementById('project-list');
+  const footer  = document.getElementById('footer-bar');
+  const stat    = document.getElementById('footer-stat');
   const sortBar = document.getElementById('sort-bar');
 
   list.innerHTML = '';
 
-  if (projects.length === 0) {
-    list.innerHTML = `
-      <div class="empty-state">
-        <span class="empty-icon">⏱</span>
-        <strong>no projects yet</strong>
-        give your time somewhere to live
-      </div>`;
+  // Always refresh nav + section dropdown
+  renderSectionNav();
+
+  // ── No sections exist: flat project list (classic mode) ───────────────
+  if (sections.length === 0) {
+    if (projects.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">⏱</span>
+          <strong>no projects yet</strong>
+          give your time somewhere to live
+        </div>`;
+      footer.style.display = 'none';
+      sortBar.style.display = 'none';
+      document.getElementById('chart-section').style.display = 'none';
+      return;
+    }
+    footer.style.display = 'flex';
+    sortBar.style.display = 'flex';
+    const total = totalHoursAll();
+    stat.innerHTML = `<strong>${fmtHours(total)}h</strong> logged across ${projects.length} project${projects.length !== 1 ? 's' : ''}`;
+    const projectsDiv = document.createElement('div');
+    projectsDiv.className = 'section-projects';
+    sortedProjects().forEach(p => projectsDiv.appendChild(createProjectCard(p)));
+    list.appendChild(projectsDiv);
+    renderChart();
+    return;
+  }
+
+  // ── "All" overview: shows a dashboard of section cards ────────────────
+  if (activeSectionId === 'all') {
+
+    if (projects.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">⏱</span>
+          <strong>no projects yet</strong>
+          pick a section tab above and start adding projects
+        </div>`;
+      footer.style.display = 'none';
+      sortBar.style.display = 'none';
+      document.getElementById('chart-section').style.display = 'none';
+      return;
+    }
+
+    footer.style.display = 'flex';
+    sortBar.style.display = 'none'; // overview doesn't sort
+    const total = totalHoursAll();
+    stat.innerHTML = `<strong>${fmtHours(total)}h</strong> logged across ${projects.length} project${projects.length !== 1 ? 's' : ''}`;
+
+    // Section overview cards — clickable to navigate into section
+    const overview = document.createElement('div');
+    overview.className = 'section-overview';
+
+    sections.forEach(s => {
+      const sProjects = projects.filter(p => p.sectionId === s.id);
+      const sHours = sProjects.reduce((acc, p) => acc + p.hours, 0);
+      const card = document.createElement('div');
+      card.className = 'section-overview-card';
+      card.dataset.navSection = s.id;
+      card.innerHTML = `
+        <span class="section-overview-name">${escHtml(s.name)}</span>
+        <span class="section-overview-meta">${sProjects.length} project${sProjects.length !== 1 ? 's' : ''}</span>
+        <span class="section-overview-hours">${fmtHours(sHours)}h</span>
+        <span class="section-overview-chevron">›</span>`;
+      overview.appendChild(card);
+    });
+
+    // Uncategorized card (if any)
+    const uncat = projects.filter(p => !p.sectionId);
+    if (uncat.length > 0) {
+      const uncatHours = uncat.reduce((acc, p) => acc + p.hours, 0);
+      const card = document.createElement('div');
+      card.className = 'section-overview-card';
+      card.dataset.navSection = '__none__';
+      card.innerHTML = `
+        <span class="section-overview-name" style="color:var(--text-muted)">uncategorized</span>
+        <span class="section-overview-meta">${uncat.length} project${uncat.length !== 1 ? 's' : ''}</span>
+        <span class="section-overview-hours" style="color:var(--text-muted)">${fmtHours(uncatHours)}h</span>
+        <span class="section-overview-chevron">›</span>`;
+      overview.appendChild(card);
+    }
+
+    list.appendChild(overview);
+    renderChart();
+    return;
+  }
+
+  // ── Single-section page ────────────────────────────────────────────────
+  const filterById = activeSectionId === '__none__' ? null : activeSectionId;
+  const pageProjects = activeSectionId === 'all'
+    ? sortedProjects()
+    : sortedProjects().filter(p => (p.sectionId || null) === filterById);
+
+  const pageSection = activeSectionId !== 'all' && activeSectionId !== '__none__'
+    ? sections.find(s => s.id === activeSectionId)
+    : null;
+
+  if (pageProjects.length === 0) {
+    // Section exists but empty — show header + empty state
+    if (pageSection) {
+      const headerEl = document.createElement('div');
+      headerEl.className = 'section-page-header';
+      headerEl.innerHTML = `
+        <span class="section-page-title">${escHtml(pageSection.name)}</span>
+        <div class="section-page-tools">
+          <button class="btn-section-edit" data-action="edit-section" data-id="${pageSection.id}" title="Rename">✎</button>
+          <button class="btn-section-edit" data-action="delete-section" data-id="${pageSection.id}" title="Delete section">✕</button>
+        </div>`;
+      list.appendChild(headerEl);
+    }
+    const emptyEl = document.createElement('div');
+    emptyEl.className = 'empty-state';
+    emptyEl.innerHTML = `
+      <span class="empty-icon">⏱</span>
+      <strong>no projects here yet</strong>
+      type a name above and hit + add`;
+    list.appendChild(emptyEl);
     footer.style.display = 'none';
     sortBar.style.display = 'none';
     document.getElementById('chart-section').style.display = 'none';
@@ -1867,51 +2142,74 @@ function render() {
 
   footer.style.display = 'flex';
   sortBar.style.display = 'flex';
-  const total = totalHoursAll();
-  stat.innerHTML = `<strong>${fmtHours(total)}h</strong> logged across ${projects.length} project${projects.length !== 1 ? 's' : ''}`;
+  const pageTotal = pageProjects.reduce((acc, p) => acc + p.hours, 0);
+  stat.innerHTML = `<strong>${fmtHours(pageTotal)}h</strong> logged across ${pageProjects.length} project${pageProjects.length !== 1 ? 's' : ''}`;
 
-  sortedProjects().forEach(p => {
-    const card = document.createElement('div');
-    card.className  = 'project-card';
-    card.dataset.id = p.id;
-
-    const last   = p.history && p.history.length > 0 ? p.history[p.history.length - 1] : null;
-    const canUndo = !!last;
-    const lastDate = last && last.ts ? fmtDate(last.ts) : null;
-    const pColor = p.color || TAG_COLORS[0].hex;
-
-    card.innerHTML = `
-      <div class="card-top">
-        <span class="color-dot" data-id="${p.id}" style="background:${pColor}" title="Click to change color"></span>
-        <span class="project-name" title="${escHtml(p.name)}">${escHtml(p.name)}</span>
-        <span>
-          <span class="hours-display">${fmtHours(p.hours)}</span>
-          <span class="hours-unit">h</span>
-        </span>
-      </div>
-      <div class="card-actions">
-        <button class="btn-hour" data-id="${p.id}" data-delta="1"   title="Log 1 hour">+1h</button>
-        <button class="btn-hour" data-id="${p.id}" data-delta="0.5" title="Log 30 min">+½h</button>
-        <input class="custom-hour-input" data-id="${p.id}" type="number" step="0.5" min="0.5" placeholder="h" title="Custom hours" />
-        <button class="btn-log-custom" data-id="${p.id}" title="Log custom hours">+log</button>
-        <span class="spacer"></span>
-        <button class="btn-edit"   data-id="${p.id}" title="Rename">✎</button>
-        <button class="btn-danger" data-id="${p.id}" title="Delete">✕</button>
-      </div>
-      <div class="note-row">
-        <input class="note-input" data-id="${p.id}" type="text" placeholder="note (optional)..." maxlength="120" spellcheck="false" />
-      </div>
-      ${lastDate ? `<div class="last-logged">last logged: ${lastDate}</div>` : ''}
-      <div class="undo-hint ${canUndo ? 'visible' : ''}" id="undo-${p.id}">
-        ${canUndo ? `+${last.delta}h ${fmtRelative(last.ts)}${last.note ? ` — "${escHtml(last.note)}"` : ''} — <span class="undo-link" data-id="${p.id}">oops, undo</span>` : ''}
+  // Section page header with rename/delete
+  if (pageSection) {
+    const headerEl = document.createElement('div');
+    headerEl.className = 'section-page-header';
+    headerEl.innerHTML = `
+      <span class="section-page-title">${escHtml(pageSection.name)}</span>
+      <div class="section-page-tools">
+        <button class="btn-section-edit" data-action="edit-section" data-id="${pageSection.id}" title="Rename section">✎</button>
+        <button class="btn-section-edit" data-action="delete-section" data-id="${pageSection.id}" title="Delete section">✕</button>
       </div>`;
+    list.appendChild(headerEl);
+  } else if (activeSectionId === '__none__') {
+    const headerEl = document.createElement('div');
+    headerEl.className = 'section-page-header';
+    headerEl.innerHTML = `<span class="section-page-title" style="color:var(--text-muted)">uncategorized</span>`;
+    list.appendChild(headerEl);
+  }
 
-    card.style.borderLeft = `3px solid ${pColor}`;
-
-    list.appendChild(card);
-  });
+  const projectsDiv = document.createElement('div');
+  projectsDiv.className = 'section-projects';
+  pageProjects.forEach(p => projectsDiv.appendChild(createProjectCard(p)));
+  list.appendChild(projectsDiv);
 
   renderChart();
+}
+
+function createProjectCard(p) {
+  const card = document.createElement('div');
+  card.className = 'project-card';
+  card.dataset.id = p.id;
+
+  const last   = p.history && p.history.length > 0 ? p.history[p.history.length - 1] : null;
+  const canUndo = !!last;
+  const lastDate = last && last.ts ? fmtDate(last.ts) : null;
+  const pColor = p.color || TAG_COLORS[0].hex;
+
+  card.innerHTML = `
+    <div class="card-top">
+      <span class="color-dot" data-id="${p.id}" style="background:${pColor}" title="Click to change color"></span>
+      <span class="project-name" title="${escHtml(p.name)}">${escHtml(p.name)}</span>
+      <span>
+        <span class="hours-display">${fmtHours(p.hours)}</span>
+        <span class="hours-unit">h</span>
+      </span>
+    </div>
+    <div class="card-actions">
+      <button class="btn-hour" data-id="${p.id}" data-delta="1"   title="Log 1 hour">+1h</button>
+      <button class="btn-hour" data-id="${p.id}" data-delta="0.5" title="Log 30 min">+½h</button>
+      <input class="custom-hour-input" data-id="${p.id}" type="number" step="0.5" min="0.5" placeholder="h" title="Custom hours" />
+      <button class="btn-log-custom" data-id="${p.id}" title="Log custom hours">+log</button>
+      <span class="spacer"></span>
+      <button class="btn-edit"   data-id="${p.id}" title="Rename">✎</button>
+      <button class="btn-danger" data-id="${p.id}" title="Delete">✕</button>
+    </div>
+    <div class="note-row">
+      <input class="note-input" data-id="${p.id}" type="text" placeholder="note (optional)..." maxlength="120" spellcheck="false" />
+    </div>
+    ${lastDate ? `<div class="last-logged">last logged: ${lastDate}</div>` : ''}
+    <div class="undo-hint ${canUndo ? 'visible' : ''}" id="undo-${p.id}">
+      ${canUndo ? `+${last.delta}h ${fmtRelative(last.ts)}${last.note ? ` — "${escHtml(last.note)}"` : ''} — <span class="undo-link" data-id="${p.id}">oops, undo</span>` : ''}
+    </div>`;
+
+  card.style.borderLeft = `3px solid ${pColor}`;
+
+  return card;
 }
 
 function escHtml(s) {
@@ -1920,14 +2218,51 @@ function escHtml(s) {
 
 // ── Project ops ────────────────────────────────────────────────────────────
 
-function addProject(name) {
+function addSection(name) {
+  name = name.trim();
+  if (!name) return false;
+  if (sections.find(s => s.name.toLowerCase() === name.toLowerCase())) {
+    showToast('section with that name already exists');
+    return false;
+  }
+  const newSection = { id: uid(), name };
+  sections.push(newSection);
+  save();
+  activeSectionId = newSection.id; // navigate straight into the new section
+  render();
+  return true;
+}
+
+function deleteSection(id) {
+  const idx = sections.findIndex(s => s.id === id);
+  if (idx === -1) return;
+  const name = sections[idx].name;
+  projects.forEach(p => { if (p.sectionId === id) p.sectionId = null; });
+  sections.splice(idx, 1);
+  if (activeSectionId === id) activeSectionId = 'all';
+  save();
+  render();
+  showToast(`"${name}" section removed`);
+}
+
+function renameSection(id, newName) {
+  newName = newName.trim();
+  if (!newName) return;
+  const s = sections.find(s => s.id === id);
+  if (!s || s.name === newName) return;
+  s.name = newName;
+  save();
+  render();
+}
+
+function addProject(name, sectionId) {
   name = name.trim();
   if (!name) return false;
   if (projects.find(p => p.name.toLowerCase() === name.toLowerCase())) {
     showToast('you already have that one 👀'); return false;
   }
   const color = TAG_COLORS[projects.length % TAG_COLORS.length].hex;
-  projects.unshift({ id: uid(), name, hours: 0, history: [], color });
+  projects.unshift({ id: uid(), name, hours: 0, history: [], color, sectionId: sectionId || null });
   save(); render();
   showToast(`"${name}" is ready to absorb your time`);
   return true;
@@ -2046,7 +2381,7 @@ function startEdit(id) {
 
 function exportJSON() {
   const blob = new Blob(
-    [JSON.stringify({ exported: new Date().toISOString(), projects }, null, 2)],
+    [JSON.stringify({ exported: new Date().toISOString(), projects, sections }, null, 2)],
     { type: 'application/json' }
   );
   const url = URL.createObjectURL(blob);
@@ -2089,11 +2424,21 @@ function importJSON(file) {
     try {
       const parsed   = JSON.parse(e.target.result);
       const incoming = parsed.projects || (Array.isArray(parsed) ? parsed : null);
+      const incomingSections = parsed.sections || [];
       if (!incoming) throw new Error();
+      
+      // Merge projects
       const map = Object.fromEntries(projects.map(p => [p.id, p]));
       incoming.forEach(p => { if (p.id && p.name != null) map[p.id] = p; });
       projects = Object.values(map);
+      
+      // Merge sections
+      const sectionMap = Object.fromEntries(sections.map(s => [s.id, s]));
+      incomingSections.forEach(s => { if (s.id && s.name != null) sectionMap[s.id] = s; });
+      sections = Object.values(sectionMap);
+      
       save(); render();
+      renderSectionSelect();
       showToast(`imported ${incoming.length} project(s) — welcome back`);
     } catch (_) { showToast('hmm, that JSON looked a bit off'); }
   };
@@ -2151,9 +2496,16 @@ function weekKey(ts) {
 function renderChart() {
   const section   = document.getElementById('chart-section');
   const container = document.getElementById('chart-container');
-  const hasHistory = projects.some(p => p.history && p.history.length > 0);
 
-  if (projects.length === 0 || !hasHistory) {
+  // Filter projects to the active section
+  const filterById = activeSectionId === '__none__' ? null : activeSectionId;
+  const visibleProjects = (activeSectionId === 'all' || sections.length === 0)
+    ? projects
+    : projects.filter(p => (p.sectionId || null) === filterById);
+
+  const hasHistory = visibleProjects.some(p => p.history && p.history.length > 0);
+
+  if (visibleProjects.length === 0 || !hasHistory) {
     section.style.display = 'none';
     return;
   }
@@ -2180,7 +2532,7 @@ function renderChart() {
   const keyFn = chartRange === 'week' ? dayKey : weekKey;
   const data = buckets.map(bk => {
     const segments = [];
-    projects.forEach(p => {
+    visibleProjects.forEach(p => {
       const hrs = (p.history || [])
         .filter(h => keyFn(h.ts) === bk)
         .reduce((sum, h) => sum + h.delta, 0);
@@ -2226,6 +2578,37 @@ function renderChart() {
 
 document.getElementById('project-list').addEventListener('click', e => {
   const t = e.target;
+
+  // Section overview card: navigate into section
+  const overviewCard = t.closest('.section-overview-card');
+  if (overviewCard) {
+    activeSectionId = overviewCard.dataset.navSection;
+    render();
+    return;
+  }
+
+  // Section page actions (rename / delete)
+  if (t.classList.contains('btn-section-edit')) {
+    const action = t.dataset.action;
+    const sectionId = t.dataset.id;
+    if (action === 'edit-section') {
+      const section = sections.find(s => s.id === sectionId);
+      if (section) {
+        const newName = prompt('Rename section:', section.name);
+        if (newName) renameSection(sectionId, newName);
+      }
+    } else if (action === 'delete-section') {
+      const section = sections.find(s => s.id === sectionId);
+      if (section) {
+        if (confirm(`Delete "${section.name}" section? Projects will move to uncategorized.`)) {
+          deleteSection(sectionId);
+        }
+      }
+    }
+    return;
+  }
+
+  // Project actions
   if (t.classList.contains('btn-hour')) {
     const card = t.closest('.project-card');
     const noteInput = card && card.querySelector('.note-input');
@@ -2259,13 +2642,37 @@ document.getElementById('project-list').addEventListener('keydown', e => {
 
 document.getElementById('add-btn').addEventListener('click', () => {
   const inp = document.getElementById('project-input');
-  if (addProject(inp.value)) inp.value = '';
+  let sectionId;
+  if (activeSectionId !== 'all' && activeSectionId !== '__none__') {
+    sectionId = activeSectionId;
+  } else {
+    const select = document.getElementById('section-select');
+    sectionId = select.value || null;
+  }
+  if (addProject(inp.value, sectionId)) inp.value = '';
   inp.focus();
 });
 
 document.getElementById('project-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
-    if (addProject(e.target.value)) e.target.value = '';
+    let sectionId;
+    if (activeSectionId !== 'all' && activeSectionId !== '__none__') {
+      sectionId = activeSectionId;
+    } else {
+      const select = document.getElementById('section-select');
+      sectionId = select.value || null;
+    }
+    if (addProject(e.target.value, sectionId)) e.target.value = '';
+  }
+});
+
+// Section nav: tab switches + "+ section" button (delegated, re-rendered on each render)
+document.getElementById('section-nav').addEventListener('click', e => {
+  const tab = e.target.closest('[data-nav-section]');
+  if (tab) { activeSectionId = tab.dataset.navSection; render(); return; }
+  if (e.target.closest('#add-section-btn')) {
+    const name = prompt('New section name:');
+    if (name) addSection(name);
   }
 });
 
@@ -2313,7 +2720,7 @@ document.getElementById('chart-toggle').addEventListener('click', e => {
 // ── Boot ───────────────────────────────────────────────────────────────────
 
 load();
-render();
+render(); // renderSectionNav and renderSectionSelect are called inside render()
 loadBg(); // restore last chosen background
 
 // Fetch commit ID from GitHub API
