@@ -621,6 +621,7 @@
       font-family: var(--font); font-size: 0.875rem; padding: 0.6rem 0.8rem;
       border-radius: var(--radius); outline: none; transition: border-color var(--transition); cursor: pointer;">
     </select>
+    <button class="btn btn-ghost" id="add-section-btn-form" title="Create a new section to group projects">+ section</button>
     <button class="btn btn-primary" id="add-btn">+ add</button>
   </div>
 
@@ -1951,6 +1952,8 @@ function renderSectionNav() {
   // Only show nav when there's at least one section
   if (sections.length === 0) {
     nav.style.display = 'none';
+    const formBtn = document.getElementById('add-section-btn-form');
+    if (formBtn) formBtn.style.display = '';
     return;
   }
 
@@ -1982,12 +1985,16 @@ function renderSectionNav() {
     nav.appendChild(tab);
   }
 
-  // "+ new section" inline button
+  // "+ new section" inline button in the nav (only when sections already exist)
   const addTab = document.createElement('button');
   addTab.className = 'section-tab-add';
   addTab.textContent = '+ section';
   addTab.id = 'add-section-btn';
   nav.appendChild(addTab);
+
+  // Hide the always-visible form button once nav is showing (avoid duplication)
+  const formBtn = document.getElementById('add-section-btn-form');
+  if (formBtn) formBtn.style.display = 'none';
 
   // Update input placeholder to reflect where projects will land
   const inp = document.getElementById('project-input');
@@ -2674,6 +2681,12 @@ document.getElementById('section-nav').addEventListener('click', e => {
     const name = prompt('New section name:');
     if (name) addSection(name);
   }
+});
+
+// Always-visible "+ section" button in the add-form (shown before any sections exist)
+document.getElementById('add-section-btn-form').addEventListener('click', () => {
+  const name = prompt('New section name:');
+  if (name) addSection(name);
 });
 
 document.getElementById('confirm-delete').addEventListener('click', () => {
